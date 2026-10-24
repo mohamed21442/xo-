@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101321">
+  <title>XO Arena — لعبة إكس أو</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101321;--panel:#191d31;--panel2:#202640;--text:#f4f5ff;--muted:#a6adc9;--line:#343b5b;--purple:#8b7cff;--cyan:#57e6d1;--pink:#ff718d}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#22264a 0%,var(--bg) 58%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;display:flex;justify-content:center;padding:24px 14px}
+    main{width:min(100%,520px)} .brand{text-align:center;margin:10px 0 22px}.logo{font-size:2.8rem;font-weight:950;letter-spacing:5px;margin:0}.logo span:first-child{color:var(--pink)}.logo span:last-child{color:var(--cyan)} .tag{color:var(--muted);margin:3px 0}
+    .panel{background:rgba(25,29,49,.94);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 50px #0003}
+    .stack{display:grid;gap:10px}.row{display:flex;gap:8px}.btn,input{font:inherit;border-radius:13px;padding:12px 14px}.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);font-weight:750;cursor:pointer;transition:transform .12s,opacity .12s}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.45;cursor:not-allowed}.primary{background:linear-gradient(135deg,#8b7cff,#6558d9);border:0}.row input{min-width:0;flex:1;width:100%;background:#101426;border:1px solid var(--line);color:var(--text);text-align:center;text-transform:uppercase;letter-spacing:4px}
+    .hint,.small{color:var(--muted);font-size:.9rem;line-height:1.7}.hint{text-align:center;margin:12px 0 0}.hidden{display:none!important}
+    .room-code{font-size:2rem;font-weight:900;letter-spacing:8px;color:var(--cyan);text-align:center;direction:ltr}.status{text-align:center;min-height:2rem;font-weight:800;margin:12px 0}
+    .players{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}.player{border:1px solid var(--line);border-radius:15px;padding:12px;text-align:center;background:#111629}.player.active{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple) inset}.mark{font-size:1.7rem;font-weight:950}.x{color:var(--pink)}.o{color:var(--cyan)}.score{font-size:1.3rem;font-weight:850}
+    .board{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;direction:ltr}.cell{aspect-ratio:1;border:1px solid var(--line);border-radius:17px;background:#111629;color:var(--text);font-size:clamp(2.6rem,15vw,4.6rem);font-weight:950;cursor:pointer}.cell:disabled{cursor:default}.cell.X{color:var(--pink)}.cell.O{color:var(--cyan)}.cell.win{background:#34315b;border-color:var(--purple)}
+    .actions{display:grid;gap:9px;margin-top:14px}.notice{padding:10px 12px;border-radius:12px;background:#29223a;color:#ffd9a6;font-size:.9rem;line-height:1.6;margin-top:12px}.footer{text-align:center;color:var(--muted);font-size:.8rem;margin:18px 0}
+    @media(min-width:440px){.panel{padding:24px}.cell{border-radius:20px}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="brand"><h1 class="logo"><span>X</span> <span>O</span></h1><p class="tag">XO Arena · العب مع أصحابك من أي مكان</p></header>
+
+  <section id="menu" class="panel">
+    <div class="stack">
+      <button id="createBtn" class="btn primary">إنشاء غرفة أونلاين</button>
+      <div class="row"><input id="roomInput" maxlength="6" placeholder="كود الغرفة" aria-label="كود الغرفة"><button id="joinBtn" class="btn">دخول</button></div>
+      <button id="localBtn" class="btn">لعب على نفس الجهاز</button>
+    </div>
+    <p class="hint">أنشئ غرفة وابعث الكود لصاحبك. لازم إعداد Firebase مرة واحدة لتفعيل اللعب أونلاين.</p>
+    <div id="menuError" class="notice hidden"></div>
+  </section>
+
+  <section id="lobby" class="panel hidden">
+    <p class="hint">كود الغرفة — ابعته للاعب الثاني</p><div id="roomCode" class="room-code"></div>
+    <div id="lobbyStatus" class="status">في انتظار اللاعب الثاني…</div>
+    <div class="actions"><button id="copyBtn" class="btn">نسخ الكود</button><button id="cancelBtn" class="btn">رجوع للقائمة</button></div>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="players">
+      <div id="playerX" class="player"><div class="mark x">X</div><div id="nameX" class="small">اللاعب X</div><div id="scoreX" class="score">0</div></div>
+      <div id="playerO" class="player"><div class="mark o">O</div><div id="nameO" class="small">اللاعب O</div><div id="scoreO" class="score">0</div></div>
+    </div>
+    <div id="gameStatus" class="status">دور X</div>
+    <div id="board" class="board" aria-label="لوحة إكس أو"></div>
+    <div class="actions"><button id="nextBtn" class="btn primary hidden">جولة جديدة</button><button id="leaveBtn" class="btn">رجوع للقائمة</button></div>
+  </section>
+  <p class="footer">XO Arena · موقع ويب متوافق مع الموبايل والكمبيوتر</p>
+</main>
+
+<script type="module">
+  // 1) أنشئ مشروع Firebase، ثم ضع إعداداتك هنا بدل القيم التجريبية.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+  import { getDatabase, ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "PASTE_YOUR_FIREBASE_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "PASTE_YOUR_PROJECT_ID",
+    storageBucket: "PASTE_YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
+    appId: "PASTE_YOUR_APP_ID"
+  };
+
+  const $ = id => document.getElementById(id);
+  const menu = $("menu"), lobby = $("lobby"), game = $("game");
+  const boardEl = $("board");
+  const winLines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  let app, auth, db, uid = null, mode = null, roomId = null, myMark = null;
+  let state = null, unsubscribe = null, localState = null, busy = false;
+
+  for (let i=0;i<9;i++) {
+    const b = document.createElement("button");
+    b.className = "cell"; b.setAttribute("aria-label", `الخانة ${i+1}`);
+    b.addEventListener("click", () => play(i));
+    boardEl.appendChild(b);
+  }
+  const cells = [...boardEl.children];
+
+  function show(which) {
+    menu.classList.toggle("hidden", which !== "menu");
+    lobby.classList.toggle("hidden", which !== "lobby");
+    game.classList.toggle("hidden", which !== "game");
+  }
+  function error(message) { $("menuError").textContent = message; $("menuError").classList.remove("hidden"); }
+  function clearError() { $("menuError").classList.add("hidden"); $("menuError").textContent = ""; }
+  function emptyState(hostUid) {
+    return { board:Array(9).fill(""), turn:"X", winner:null, line:[], scores:{X:0,O:0}, round:1, host:hostUid, guest:null, status:"waiting", updatedAt:Date.now() };
+  }
+  function winnerOf(b) {
+    for (const line of winLines) if (b[line[0]] && b[line[0]]===b[line[1]] && b[line[1]]===b[line[2]]) return {winner:b[line[0]],line};
+    return b.every(Boolean) ? {winner:"draw",line:[]} : null;
+  }
+  function readyConfig() {
+    return firebaseConfig.apiKey !== "PASTE_YOUR_FIREBASE_API_KEY" &&
+      firebaseConfig.projectId !== "PASTE_YOUR_PROJECT_ID" &&
+      firebaseConfig.databaseURL !== "https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com";
+  }
+  async function initFirebase() {
+    if (!readyConfig()) throw new Error("لازم تضيف إعدادات Firebase داخل index.html الأول. افتح README-ar.txt واتبع الخطوات.");
+    if (!app) {
+      app = initializeApp(firebaseConfig); auth = getAuth(app); db = getDatabase(app);
+      await signInAnonymously(auth);
+      uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("تعذر تسجيل الدخول المجهول في Firebase. فعّله من Authentication.");
+    }
+  }
+  function watchRoom(id) {
+    if (unsubscribe) unsubscribe();
+    unsubscribe = onValue(ref(db, `rooms/${id}`), snap => {
+      if (!snap.exists()) { error("الغرفة اتمسحت أو لم تعد موجودة."); cleanup(false); return; }
+      const next = snap.val();
+      if (mode === "online" && myMark === "O" && next.guest !== uid) { error("الغرفة لم تعد متاحة."); cleanup(false); return; }
+      state = next;
+      if (state.status === "playing" || state.status === "finished") show("game");
+      else { $("roomCode").textContent = id; $("lobbyStatus").textContent = state.guest ? "اللاعبان جاهزان!" : "في انتظار اللاعب الثاني…"; show("lobby"); }
+      render();
+    }, e => error("فشل الاتصال بقاعدة البيانات: " + e.message));
+  }
+  function render() {
+    const s = mode === "local" ? localState : state;
+    if (!s) return;
+    cells.forEach((cell,i) => {
+      cell.textContent = s.board[i] || "";
+      cell.className = "cell " + (s.board[i] || "") + (s.line?.includes(i) ? " win" : "");
+      cell.disabled = !!s.winner || !!s.board[i] || (mode === "online" && (s.turn !== myMark || s.status !== "playing"));
+    });
+    $("scoreX").textContent = s.scores.X; $("scoreO").textContent = s.scores.O;
+    $("nameX").textContent = mode === "online" ? (myMark==="X" ? "أنت · المضيف" : "صاحبك") : "اللاعب الأول";
+    $("nameO").textContent = mode === "online" ? (myMark==="O" ? "أنت" : "صاحبك") : "اللاعب الثاني";
+    $("playerX").classList.toggle("active", !s.winner && s.turn==="X");
+    $("playerO").classList.toggle("active", !s.winner && s.turn==="O");
+    let status;
+    if (s.winner === "draw") status = "تعادل 🤝";
+    else if (s.winner) status = mode === "online" ? (s.winner===myMark ? "كسبت الجولة! 🎉" : "صاحبك كسب الجولة") : `اللاعب ${s.winner} كسب الجولة! 🎉`;
+    else if (mode === "online") status = s.turn===myMark ? `دورك (${myMark})` : "مستني صاحبك…";
+    else status = `دور اللاعب ${s.turn}`;
+    $("gameStatus").textContent = status;
+    $("nextBtn").classList.toggle("hidden", !s.winner);
+  }
+  async function createRoom() {
+    clearError(); busy = true; $("createBtn").disabled = true;
+    try {
+      await initFirebase(); mode = "online"; myMark = "X";
+      let id, exists = true;
+      for (let tries=0;tries<8 && exists;tries++) {
+        id = Array.from(crypto.getRandomValues(new Uint8Array(5)), n => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("");
+        exists = (await get(ref(db, `rooms/${id}`))).exists();
+      }
+      roomId = id;
+      await set(ref(db, `rooms/${roomId}`), emptyState(uid));
+      $("roomCode").textContent = roomId; $("lobbyStatus").textContent = "في انتظار اللاعب الثاني…";
+      show("lobby"); watchRoom(roomId);
+    } catch(e) { error(e.message || "تعذر إنشاء الغرفة."); mode = null; }
+    finally { busy = false; $("createBtn").disabled = false; }
+  }
+  async function joinRoom() {
+    clearError(); busy = true; $("joinBtn").disabled = true;
+    try {
+      await initFirebase();
+      const id = $("roomInput").value.trim().toUpperCase();
+      if (!/^[A-HJ-NP-Z2-9]{5}$/.test(id)) throw new Error("اكتب كود غرفة صحيح مكوّن من 5 أحرف أو أرقام.");
+      const roomRef = ref(db, `rooms/${id}`), snap = await get(roomRef);
+      if (!snap.exists()) throw new Error("الغرفة غير موجودة. اتأكد من الكود.");
+      const s = snap.val();
+      if (s.host === uid) throw new Error("لا يمكنك دخول غرفتك من نفس الجلسة.");
+      if (s.guest && s.guest !== uid) throw new Error("الغرفة ممتلئة بالفعل.");
+      if (s.status !== "waiting") throw new Error("اللعبة بدأت بالفعل.");
+      await update(roomRef, {guest:uid,status:"playing",updatedAt:Date.now()});
+      mode = "online"; myMark = "O"; roomId = id; watchRoom(id);
+    } catch(e) { error(e.message || "تعذر دخول الغرفة."); mode = null; }
+    finally { busy = false; $("joinBtn").disabled = false; }
+  }
+  async function play(i) {
+    if (mode === "local") {
+      const s = localState;
+      if (s.winner || s.board[i]) return;
+      s.board[i] = s.turn; const result = winnerOf(s.board);
+      if (result) { s.winner=result.winner; s.line=result.line; if (result.winner!=="draw") s.scores[result.winner]++; }
+      else s.turn = s.turn==="X" ? "O" : "X";
+      render(); return;
+    }
+    if (mode !== "online" || !state || state.turn !== myMark || state.winner || state.status !== "playing" || state.board[i]) return;
+    const s = {...state, board:[...state.board], scores:{...state.scores}};
+    s.board[i] = myMark; const result = winnerOf(s.board);
+    if (result) { s.winner=result.winner; s.line=result.line; s.status="finished"; if (result.winner!=="draw") s.scores[result.winner]++; }
+    else s.turn = myMark==="X" ? "O" : "X";
+    s.updatedAt = Date.now();
+    try { await set(ref(db, `rooms/${roomId}`), s); } catch(e) { error("لم يتم حفظ الحركة: " + e.message); }
+  }
+  async function nextRound() {
+    const s = mode === "local" ? localState : state;
+    if (!s?.winner) return;
+    const next = {...s, board:Array(9).fill(""), winner:null, line:[], round:(s.round||1)+1, turn:(s.round||1)%2 ? "O" : "X", status: mode==="online" ? "playing" : "local", updatedAt:Date.now()};
+    if (mode==="local") { localState=next; render(); }
+    else if (mode==="online" && myMark==="X") { try { await set(ref(db,`rooms/${roomId}`),next); } catch(e) { error("تعذر بدء جولة جديدة."); } }
+    else if (mode==="online") { $("gameStatus").textContent="استنى المضيف يبدأ الجولة الجديدة."; }
+  }
+  async function cleanup(deleteRoom=false) {
+    if (unsubscribe) { unsubscribe(); unsubscribe=null; }
+    if (deleteRoom && mode==="online" && roomId && myMark==="X" && db) { try { await remove(ref(db,`rooms/${roomId}`)); } catch(_){} }
+    mode=null; roomId=null; myMark=null; state=null; localState=null; show("menu");
+  }
+  $("createBtn").addEventListener("click", createRoom);
+  $("joinBtn").addEventListener("click", joinRoom);
+  $("localBtn").addEventListener("click", () => { clearError(); mode="local"; localState={...emptyState("local"),status:"local"}; show("game"); render(); });
+  $("nextBtn").addEventListener("click", nextRound);
+  $("leaveBtn").addEventListener("click", () => cleanup(false));
+  $("cancelBtn").addEventListener("click", () => cleanup(true));
+  $("copyBtn").addEventListener("click", async () => { try { await navigator.clipboard.writeText(roomId); $("copyBtn").textContent="تم نسخ الكود ✓"; } catch(_) { $("lobbyStatus").textContent="كود الغرفة: "+roomId; } });
+</script>
+</body>
+</html>
